@@ -11,7 +11,7 @@ from sklearn.manifold import TSNE
 from umap import UMAP
 from sklearn.decomposition import PCA
 
-from bokeh.plotting import figure, curdoc, show
+from bokeh.plotting import figure, curdoc, show, row, column
 from bokeh.models import ColumnDataSource, Slider, ImageURL
 from bokeh.layouts import layout
 
@@ -98,7 +98,12 @@ def on_update_umap(old, attr, new):
 
     # update the source_umap
 
-    pass
+    source_umap.data = dict(
+        url3=imageFilePath,
+        x3=[i[0] for i in compute_umap(umap_n_neigbors.value_throttled)],
+        y3=[i[0] for i in compute_umap(umap_n_neigbors.value_throttled)],
+        w3=[20] * 121,
+        h3=[10] * 121)
 
 
 def compute_tsne(perplexity=4, early_exaggeration=10) -> np.ndarray:
@@ -114,9 +119,14 @@ def compute_tsne(perplexity=4, early_exaggeration=10) -> np.ndarray:
 def on_update_tsne(old, attr, new):
     """callback which computes the new t-SNE mapping and updates the source_tsne"""
     # Compute the new t-sne using compute_tsne
+    source_tsne.data = dict(
+        url2=imageFilePath,
+        x2=[i[0] for i in compute_tsne(tsne_perplexity.value_throttled, tsne_early_exaggeration.value_throttled)],
+        y2=[i[0] for i in compute_tsne(tsne_perplexity.value_throttled, tsne_early_exaggeration.value_throttled)],
+        w2=[20] * 121,
+        h2=[10] * 121)
 
     # update the source_tsne
-
 
 ########################################
 # Section ColumnDataSources # 0.5 Points
@@ -134,16 +144,13 @@ def on_update_tsne(old, attr, new):
 # Construct three data sources, one for each dimensional reduction,
 # each containing the respective dimensional reduction result and the image paths
 
-print([i[0] for i in compute_pca()])
-print([i[0] for i in compute_tsne()])
-print([i[0] for i in compute_umap()])
 
 source_pca = ColumnDataSource(data=dict(
     url=imageFilePath,
     x1=[i[0] for i in compute_pca()],
     y1=[i[1] for i in compute_pca()],
-    w1=[20000]*121,
-    h1=[10000]*121))
+    w1=[40000]*121,
+    h1=[20000]*121))
 source_tsne = ColumnDataSource(data = dict(
     url2=imageFilePath,
     x2=[i[0] for i in compute_tsne()],
@@ -152,10 +159,10 @@ source_tsne = ColumnDataSource(data = dict(
     h2=[10]*121))
 source_umap = ColumnDataSource(data = dict(
     url3=imageFilePath,
-    x3=[i[0] for i in compute_tsne()],
-    y3=[i[0] for i in compute_tsne()],
-    w3=[20]*121,
-    h3=[10]*121))
+    x3=[i[0] for i in compute_umap()],
+    y3=[i[0] for i in compute_umap()],
+    w3=[2]*121,
+    h3=[1]*121))
 
 
 
@@ -206,8 +213,9 @@ source_umap = ColumnDataSource(data = dict(
 # python -m bokeh serve --dev --show .
 from bokeh.models import ColumnDataSource, Grid, ImageURL, LinearAxis, Plot, Range1d
 
+
 plot = Plot(
-    title=None, width=500, height=500,
+    title="PCA", width=400, height=400,
     min_border=0)
 
 image1 = ImageURL(url="url", x="x1", y="y1", w="w1", h="h1", anchor="center")
@@ -223,8 +231,12 @@ plot.add_layout(yaxis,'left')
 plot.add_layout(Grid(dimension=0, ticker=xaxis.ticker))
 plot.add_layout(Grid(dimension=1, ticker=yaxis.ticker))
 
+tsne_perplexity = Slider(start=2, end=50, step=1, value=10, title="Perplexity")
+tsne_early_exaggeration = Slider(start=2, end=50, step=1, value=4, title="early_exaggeration")
+tsne_perplexity.on_change("value_throttled", on_update_tsne)
+tsne_early_exaggeration.on_change("value_throttled", on_update_tsne)
 plot2 = Plot(
-    title=None, width=500, height=500,
+    title="TSNE", width=400, height=400,
     min_border=0)
 
 image2 = ImageURL(url="url2", x="x2", y="y2", w="w2", h="h2", anchor="center")
@@ -240,8 +252,10 @@ plot2.add_layout(yaxis2,'left')
 plot2.add_layout(Grid(dimension=0, ticker=xaxis2.ticker))
 plot2.add_layout(Grid(dimension=1, ticker=yaxis2.ticker))
 
+umap_n_neigbors = Slider(start=2, end=50, step=1, value=15, title="N_Neighbors")
+umap_n_neigbors.on_change("value_throttled", on_update_umap)
 plot3 = Plot(
-    title=None, width=500, height=500,
+    title="UMAP", width=400, height=400,
     min_border=0)
 
 image3 = ImageURL(url="url3", x="x3", y="y3", w="w3", h="h3", anchor="center")
@@ -257,5 +271,5 @@ plot3.add_layout(yaxis3,'left')
 plot3.add_layout(Grid(dimension=0, ticker=xaxis3.ticker))
 plot3.add_layout(Grid(dimension=1, ticker=yaxis3.ticker))
 
-curdoc().add_root(plot3)
-show(plot3)
+curdoc().add_root(row(plot,column(plot2, tsne_perplexity, tsne_early_exaggeration),column(plot3, umap_n_neigbors)))
+show(row(plot,column(plot2, tsne_perplexity, tsne_early_exaggeration),column(plot3, umap_n_neigbors)))
