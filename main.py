@@ -12,7 +12,7 @@ from umap import UMAP
 from sklearn.decomposition import PCA
 
 from bokeh.plotting import figure, curdoc, show, row, column
-from bokeh.models import ColumnDataSource, Slider, ImageURL
+from bokeh.models import ColumnDataSource, Slider, ImageURL, WheelZoomTool, PanTool, ResetTool, Range1d
 from bokeh.layouts import layout
 
 # Dependencies
@@ -123,8 +123,8 @@ def on_update_tsne(old, attr, new):
         url2=imageFilePath,
         x2=[i[0] for i in compute_tsne(tsne_perplexity.value_throttled, tsne_early_exaggeration.value_throttled)],
         y2=[i[0] for i in compute_tsne(tsne_perplexity.value_throttled, tsne_early_exaggeration.value_throttled)],
-        w2=[20] * 121,
-        h2=[10] * 121)
+        w2=[12] * 121,
+        h2=[8] * 121)
 
     # update the source_tsne
 
@@ -161,8 +161,8 @@ source_umap = ColumnDataSource(data = dict(
     url3=imageFilePath,
     x3=[i[0] for i in compute_umap()],
     y3=[i[0] for i in compute_umap()],
-    w3=[2]*121,
-    h3=[1]*121))
+    w3=[12]*121,
+    h3=[8]*121))
 
 
 
@@ -211,15 +211,14 @@ source_umap = ColumnDataSource(data = dict(
 # dev option:
 # bokeh serve --dev --show .
 # python -m bokeh serve --dev --show .
-from bokeh.models import ColumnDataSource, Grid, ImageURL, LinearAxis, Plot, Range1d
+from bokeh.models import Grid, ImageURL, LinearAxis, Plot
 
 
-plot = Plot(
-    title="PCA", width=400, height=400,
-    min_border=0)
+plot = Plot(title="PCA", width=400, height=400)
 
 image1 = ImageURL(url="url", x="x1", y="y1", w="w1", h="h1", anchor="center")
 plot.add_glyph(source_pca, image1)
+plot.add_tools(WheelZoomTool(), PanTool(), ResetTool())
 
 
 xaxis = LinearAxis()
@@ -235,9 +234,9 @@ tsne_perplexity = Slider(start=2, end=50, step=1, value=10, title="Perplexity")
 tsne_early_exaggeration = Slider(start=2, end=50, step=1, value=4, title="early_exaggeration")
 tsne_perplexity.on_change("value_throttled", on_update_tsne)
 tsne_early_exaggeration.on_change("value_throttled", on_update_tsne)
-plot2 = Plot(
-    title="TSNE", width=400, height=400,
-    min_border=0)
+plot2 = Plot(title="TSNE", width=400, height=400,x_range = Range1d(start=-50, end=50),
+y_range=Range1d(start=-50, end=50))
+plot2.add_tools(WheelZoomTool(), PanTool(), ResetTool())
 
 image2 = ImageURL(url="url2", x="x2", y="y2", w="w2", h="h2", anchor="center")
 plot2.add_glyph(source_tsne, image2)
@@ -254,13 +253,12 @@ plot2.add_layout(Grid(dimension=1, ticker=yaxis2.ticker))
 
 umap_n_neigbors = Slider(start=2, end=50, step=1, value=15, title="N_Neighbors")
 umap_n_neigbors.on_change("value_throttled", on_update_umap)
-plot3 = Plot(
-    title="UMAP", width=400, height=400,
-    min_border=0)
+plot3 = Plot(title="UMAP", width=400, height=400, x_range = Range1d(start=-20, end=40),
+y_range=Range1d(start=-20, end=40))
 
 image3 = ImageURL(url="url3", x="x3", y="y3", w="w3", h="h3", anchor="center")
 plot3.add_glyph(source_umap, image3)
-
+plot3.add_tools(WheelZoomTool(), PanTool(), ResetTool())
 
 xaxis3 = LinearAxis()
 plot3.add_layout(xaxis3, 'below')
