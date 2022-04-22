@@ -1,14 +1,17 @@
 import glob
 import os
+import random
+
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from sklearn.manifold import TSNE
 from umap import UMAP
 from sklearn.decomposition import PCA
 
-from bokeh.plotting import figure, curdoc
+from bokeh.plotting import figure, curdoc, show
 from bokeh.models import ColumnDataSource, Slider, ImageURL
 from bokeh.layouts import layout
 
@@ -69,14 +72,25 @@ for idx, f in enumerate(glob.glob("static/*.jpg")):
     # Append the image url to the list for the server
     url = ROOT + f
     imageFilePath.append(url)
-colorHistogram = np.reshape(colorHistogram, (121, N_BINS_COLOR**3))
-print(colorHistogram.shape)
+colorHistogram = np.reshape(colorHistogram, (N, N_BINS_COLOR**3))
+
+
+def compute_pca(n_components=2) -> np.ndarray:
+    pca = PCA(n_components=n_components)
+    pca.fit(colorHistogram)
+    sol = pca.transform(colorHistogram)
+    return sol
+
 def compute_umap(n_neighbors=15) -> np.ndarray:
     """performes a UMAP dimensional reduction on color_histograms using given n_neighbors"""
     # compute and return the new UMAP dimensional reduction
-    pass
-    # return ...
-
+    reducer = UMAP(n_neighbors=n_neighbors, n_components=2)
+    reducer.fit(colorHistogram)
+    embedding = reducer.transform(colorHistogram)
+    # Verify that the result of calling transform is
+    # idenitical to accessing the embedding_ attribute
+    assert (np.all(embedding == reducer.embedding_))
+    return embedding
 
 def on_update_umap(old, attr, new):
     """callback which computes the new UMAP mapping and updates the source_umap"""
@@ -90,7 +104,10 @@ def on_update_umap(old, attr, new):
 def compute_tsne(perplexity=4, early_exaggeration=10) -> np.ndarray:
     """performes a t-SNE dimensional reduction on color_histograms using given perplexity and early_exaggeration"""
     # compute and return the new t-SNE dimensional reduction
-    pass
+    X_embedded = TSNE(n_components=2, learning_rate='auto',
+                      perplexity=perplexity,
+                      early_exaggeration=early_exaggeration).fit_transform(colorHistogram)
+    return X_embedded
     # return ...
 
 
@@ -99,6 +116,7 @@ def on_update_tsne(old, attr, new):
     # Compute the new t-sne using compute_tsne
 
     # update the source_tsne
+
 
 ########################################
 # Section ColumnDataSources # 0.5 Points
@@ -115,9 +133,31 @@ def on_update_tsne(old, attr, new):
 
 # Construct three data sources, one for each dimensional reduction,
 # each containing the respective dimensional reduction result and the image paths
-# source_pca =
-# source_tsne =
-# source_umap =
+
+print([i[0] for i in compute_pca()])
+print([i[0] for i in compute_tsne()])
+print([i[0] for i in compute_umap()])
+
+source_pca = ColumnDataSource(data=dict(
+    url=imageFilePath,
+    x1=[i[0] for i in compute_pca()],
+    y1=[i[1] for i in compute_pca()],
+    w1=[20000]*121,
+    h1=[10000]*121))
+source_tsne = ColumnDataSource(data = dict(
+    url2=imageFilePath,
+    x2=[i[0] for i in compute_tsne()],
+    y2=[i[0] for i in compute_tsne()],
+    w2=[20]*121,
+    h2=[10]*121))
+source_umap = ColumnDataSource(data = dict(
+    url3=imageFilePath,
+    x3=[i[0] for i in compute_tsne()],
+    y3=[i[0] for i in compute_tsne()],
+    w3=[20]*121,
+    h3=[10]*121))
+
+
 
 
 #############################
@@ -164,3 +204,58 @@ def on_update_tsne(old, attr, new):
 # dev option:
 # bokeh serve --dev --show .
 # python -m bokeh serve --dev --show .
+from bokeh.models import ColumnDataSource, Grid, ImageURL, LinearAxis, Plot, Range1d
+
+plot = Plot(
+    title=None, width=500, height=500,
+    min_border=0)
+
+image1 = ImageURL(url="url", x="x1", y="y1", w="w1", h="h1", anchor="center")
+plot.add_glyph(source_pca, image1)
+
+
+xaxis = LinearAxis()
+plot.add_layout(xaxis, 'below')
+
+yaxis = LinearAxis()
+plot.add_layout(yaxis,'left')
+
+plot.add_layout(Grid(dimension=0, ticker=xaxis.ticker))
+plot.add_layout(Grid(dimension=1, ticker=yaxis.ticker))
+
+plot2 = Plot(
+    title=None, width=500, height=500,
+    min_border=0)
+
+image2 = ImageURL(url="url2", x="x2", y="y2", w="w2", h="h2", anchor="center")
+plot2.add_glyph(source_tsne, image2)
+
+
+xaxis2 = LinearAxis()
+plot2.add_layout(xaxis2, 'below')
+
+yaxis2 = LinearAxis()
+plot2.add_layout(yaxis2,'left')
+
+plot2.add_layout(Grid(dimension=0, ticker=xaxis2.ticker))
+plot2.add_layout(Grid(dimension=1, ticker=yaxis2.ticker))
+
+plot3 = Plot(
+    title=None, width=500, height=500,
+    min_border=0)
+
+image3 = ImageURL(url="url3", x="x3", y="y3", w="w3", h="h3", anchor="center")
+plot3.add_glyph(source_umap, image3)
+
+
+xaxis3 = LinearAxis()
+plot3.add_layout(xaxis3, 'below')
+
+yaxis3 = LinearAxis()
+plot3.add_layout(yaxis3,'left')
+
+plot3.add_layout(Grid(dimension=0, ticker=xaxis3.ticker))
+plot3.add_layout(Grid(dimension=1, ticker=yaxis3.ticker))
+
+curdoc().add_root(plot3)
+show(plot3)
